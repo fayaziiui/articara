@@ -1,0 +1,58 @@
+name: Fix Articara IIS pool
+
+# Sets articara app pool to No Managed Code (static site) and recycles it.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fix:
+    name: Fix IIS app pool
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass openssh-client
+
+      - name: Configure app pool over SSH
+        env:
+          SSHPASS: ${{ secrets.VM_PASSWORD }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USERNAME: ${{ secrets.VM_USERNAME }}
+          VM_PORT: ${{ secrets.VM_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${VM_PORT:-22}"
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=30"
+          python3 - <<'PY'
+          import base64, pathlib
+          ps = r"""
+          $ErrorActionPreference = 'Stop'
+          Import-Module WebAdministration
+          $pool = 'articara'
+          Write-Host "Configuring app pool $pool for static content..."
+          Set-ItemProperty "IIS:\AppPools\$pool" -Name managedRuntimeVersion -Value ''
+          Set-ItemProperty "IIS:\AppPools\$pool" -Name managedPipelineMode -Value 'Integrated'
+          Restart-WebAppPool -Name $pool
+          Start-Sleep -Seconds 2
+          $state = Get-WebAppPoolState -Name $pool
+          Write-Host ("App pool state: {0}" -f $state.Value)
+          $clr = (Get-ItemProperty "IIS:\AppPools\$pool").managedRuntimeVersion
+          Write-Host ("managedRuntimeVersion='{0}' (blank = No Managed Code)" -f $clr)
+          try {
+            $r = Invoke-WebRequest -Uri 'http://127.0.0.1/' -Headers @{ Host = 'articara.umrahcrm.com' } -UseBasicParsing -TimeoutSec 15
+            Write-Host ("Local status={0} len={1}" -f $r.StatusCode, $r.Content.Length)
+          } catch {
+            Write-Host ("Local request still failing: " + $_.Exception.Message)
+            if ($_.Exception.Response) { Write-Host ("Status=" + [int]$_.Exception.Response.StatusCode) }
+          }
+          """
+          pathlib.Path("/tmp/remote.b64").write_text(
+              base64.b64encode(ps.encode("utf-8")).decode("ascii"), encoding="ascii"
+          )
+          PY
+          B64=$(cat /tmp/remote.b64)
+          sshpass -e ssh $SSH_OPTS -p "$PORT" "${VM_USERNAME}@${VM_HOST}" \
+            "powershell -NoProfile -ExecutionPolicy Bypass -Command \"\$t=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${B64}')); Invoke-Expression \$t\""
