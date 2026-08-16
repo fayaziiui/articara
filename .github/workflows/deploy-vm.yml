@@ -1,0 +1,118 @@
+name: Deploy to VM
+
+# Build Articara (Vite) and deploy over SSH to C:\sites\othersites\<folder>.
+# Secrets (same as UmrahSystem): VM_HOST, VM_USERNAME, VM_PASSWORD, optional VM_PORT.
+
+on:
+  workflow_dispatch:
+    inputs:
+      site_folder:
+        description: 'Folder under C:\\sites\\othersites'
+        required: true
+        default: articara
+        type: string
+      app_pool_name:
+        description: 'IIS app pool name (optional; blank = app_offline.htm only)'
+        required: false
+        default: ''
+        type: string
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package site + deploy script
+        run: |
+          set -euo pipefail
+          pkg="${GITHUB_WORKSPACE}/deploy-package"
+          mkdir -p "$pkg/site" "$pkg/scripts"
+          cp -a dist/. "$pkg/site/"
+          if [ ! -f "$pkg/site/web.config" ]; then
+            cp public/web.config "$pkg/site/web.config"
+          fi
+          cp scripts/deploy-static.ps1 "$pkg/scripts/"
+          (cd "$pkg" && zip -r "${GITHUB_WORKSPACE}/articara-deploy.zip" .)
+          echo "Packaged $(find "$pkg/site" -type f | wc -l) site files"
+
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass openssh-client
+
+      - name: SCP package to VM and run deploy
+        env:
+          SSHPASS: ${{ secrets.VM_PASSWORD }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USERNAME: ${{ secrets.VM_USERNAME }}
+          VM_PORT: ${{ secrets.VM_PORT }}
+          SITE_FOLDER: ${{ github.event.inputs.site_folder || 'articara' }}
+          APP_POOL_NAME: ${{ github.event.inputs.app_pool_name || '' }}
+        run: |
+          set -euo pipefail
+
+          : "${VM_HOST:?Set GitHub secret VM_HOST}"
+          : "${VM_USERNAME:?Set GitHub secret VM_USERNAME}"
+          : "${SSHPASS:?Set GitHub secret VM_PASSWORD}"
+          PORT="${VM_PORT:-22}"
+
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=30"
+          REMOTE_ZIP='C:/Windows/Temp/articara-deploy.zip'
+          export SITE_PATH="C:\\sites\\othersites\\${SITE_FOLDER}"
+
+          echo "Target: ${SITE_PATH}"
+          echo "Uploading package to ${VM_USERNAME}@${VM_HOST}:${REMOTE_ZIP}"
+          sshpass -e scp $SSH_OPTS -P "$PORT" articara-deploy.zip "${VM_USERNAME}@${VM_HOST}:${REMOTE_ZIP}"
+
+          python3 - <<'PY'
+          import os, base64, pathlib
+          site = os.environ["SITE_PATH"].replace("'", "''")
+          pool = os.environ.get("APP_POOL_NAME", "").replace("'", "''")
+          ps = f"""
+          $ErrorActionPreference = 'Stop'
+          $zip = 'C:\\Windows\\Temp\\articara-deploy.zip'
+          $work = 'C:\\Windows\\Temp\\articara-deploy'
+          if (Test-Path $work) {{ Remove-Item $work -Recurse -Force }}
+          New-Item -ItemType Directory -Path $work -Force | Out-Null
+          Expand-Archive -Path $zip -DestinationPath $work -Force
+          $deploy = Join-Path $work 'scripts\\deploy-static.ps1'
+          $source = Join-Path $work 'site'
+          if (-not (Test-Path $deploy)) {{ throw 'deploy-static.ps1 missing in package' }}
+          if (-not (Test-Path $source)) {{ throw 'site folder missing in package' }}
+          $args = @{{ SourcePath = $source; DestPath = '{site}' }}
+          if ('{pool}') {{ $args.AppPoolName = '{pool}' }}
+          & $deploy @args
+          Remove-Item $zip -Force -ErrorAction SilentlyContinue
+          Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
+          Write-Host 'Remote Articara deploy finished.'
+          """
+          pathlib.Path("/tmp/remote.b64").write_text(
+              base64.b64encode(ps.encode("utf-8")).decode("ascii"), encoding="ascii"
+          )
+          PY
+
+          B64=$(cat /tmp/remote.b64)
+          echo "Running remote deploy script over SSH..."
+          sshpass -e ssh $SSH_OPTS -p "$PORT" "${VM_USERNAME}@${VM_HOST}" \
+            "powershell -NoProfile -ExecutionPolicy Bypass -Command \"\$t=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${B64}')); Invoke-Expression \$t\""
+
+          echo "Deploy completed over SSH -> ${SITE_PATH}"
