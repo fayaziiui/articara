@@ -1,0 +1,100 @@
+name: Diagnose Articara site
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Inspect articara IIS site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass openssh-client
+
+      - name: Inspect over SSH
+        env:
+          SSHPASS: ${{ secrets.VM_PASSWORD }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USERNAME: ${{ secrets.VM_USERNAME }}
+          VM_PORT: ${{ secrets.VM_PORT }}
+        run: |
+          set -euo pipefail
+          : "${VM_HOST:?}"
+          : "${VM_USERNAME:?}"
+          : "${SSHPASS:?}"
+          PORT="${VM_PORT:-22}"
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=30"
+
+          python3 - <<'PY'
+          import base64, pathlib
+          ps = r"""
+          $ErrorActionPreference = 'Continue'
+          $path = 'C:\sites\othersites\articara'
+          Write-Host '=== FOLDER ==='
+          Write-Host $path
+          if (Test-Path $path) {
+            Get-ChildItem $path | Select-Object Mode, Length, Name | Format-Table -AutoSize | Out-String | Write-Host
+            Write-Host '=== KEY FILES ==='
+            foreach ($f in @('index.html','web.config','favicon.svg')) {
+              $p = Join-Path $path $f
+              Write-Host ("{0} exists={1}" -f $p, (Test-Path $p))
+            }
+            if (Test-Path (Join-Path $path 'web.config')) {
+              Write-Host '=== web.config ==='
+              Get-Content (Join-Path $path 'web.config') -Raw | Write-Host
+            }
+            if (Test-Path (Join-Path $path 'index.html')) {
+              Write-Host '=== index.html head ==='
+              Get-Content (Join-Path $path 'index.html') -TotalCount 25 | Write-Host
+            }
+          } else {
+            Write-Host 'MISSING site folder'
+          }
+          Write-Host '=== IIS SITES (articara / othersites) ==='
+          try {
+            Import-Module WebAdministration -ErrorAction Stop
+            Get-ChildItem IIS:\Sites | ForEach-Object {
+              $bind = ($_ | Get-WebBinding | ForEach-Object { $_.protocol + ' ' + $_.bindingInformation }) -join ' | '
+              Write-Host ($_.Name + ' | ' + $_.State + ' | ' + $_.physicalPath + ' | ' + $bind)
+            }
+            Write-Host '=== APP POOLS ==='
+            Get-ChildItem IIS:\AppPools | ForEach-Object {
+              Write-Host ($_.Name + ' | ' + (Get-WebAppPoolState $_.Name).Value)
+            }
+          } catch {
+            Write-Host $_.Exception.Message
+            cmd /c "%windir%\system32\inetsrv\appcmd.exe list site"
+            cmd /c "%windir%\system32\inetsrv\appcmd.exe list app"
+            cmd /c "%windir%\system32\inetsrv\appcmd.exe list vdir"
+          }
+          Write-Host '=== URL REWRITE MODULE ==='
+          try {
+            Get-WebGlobalModule | Where-Object { $_.Name -match 'Rewrite' } | Format-List | Out-String | Write-Host
+          } catch { Write-Host $_.Exception.Message }
+          Write-Host '=== LOCAL REQUEST ==='
+          try {
+            $r = Invoke-WebRequest -Uri 'http://127.0.0.1/' -Headers @{ Host = 'articara.umrahcrm.com' } -UseBasicParsing -TimeoutSec 15
+            Write-Host ("Local status={0} len={1}" -f $r.StatusCode, $r.Content.Length)
+            Write-Host $r.Content.Substring(0, [Math]::Min(500, $r.Content.Length))
+          } catch {
+            Write-Host ("Local request failed: " + $_.Exception.Message)
+            if ($_.Exception.Response) {
+              Write-Host ("Status=" + [int]$_.Exception.Response.StatusCode)
+            }
+          }
+          Write-Host '=== EVENT LOG ==='
+          Get-WinEvent -FilterHashtable @{ LogName='Application'; StartTime=(Get-Date).AddHours(-6) } -MaxEvents 40 -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -match 'IIS|ASP.NET|Rewrite' -or $_.Message -match 'articara|web.config|500\.' } |
+            Select-Object -First 10 TimeCreated, Id, ProviderName, Message |
+            ForEach-Object { Write-Host ("--- {0} {1} {2}" -f $_.TimeCreated, $_.Id, $_.ProviderName); Write-Host ($_.Message.Substring(0, [Math]::Min(400, $_.Message.Length))) }
+          """
+          pathlib.Path("/tmp/remote.b64").write_text(
+              base64.b64encode(ps.encode("utf-8")).decode("ascii"), encoding="ascii"
+          )
+          PY
+          B64=$(cat /tmp/remote.b64)
+          sshpass -e ssh $SSH_OPTS -p "$PORT" "${VM_USERNAME}@${VM_HOST}" \
+            "powershell -NoProfile -ExecutionPolicy Bypass -Command \"\$t=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${B64}')); Invoke-Expression \$t\""
