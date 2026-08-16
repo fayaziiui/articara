@@ -1,0 +1,30 @@
+export const JOINTS = [
+  { id: 'neck', label: 'Neck', x: 50, y: 12 },
+  { id: 'left_shoulder', label: 'L Shoulder', x: 32, y: 22 },
+  { id: 'right_shoulder', label: 'R Shoulder', x: 68, y: 22 },
+  { id: 'left_elbow', label: 'L Elbow', x: 22, y: 38 },
+  { id: 'right_elbow', label: 'R Elbow', x: 78, y: 38 },
+  { id: 'left_wrist', label: 'L Wrist', x: 14, y: 52 },
+  { id: 'right_wrist', label: 'R Wrist', x: 86, y: 52 },
+  { id: 'left_hand', label: 'L Hand', x: 10, y: 62 },
+  { id: 'right_hand', label: 'R Hand', x: 90, y: 62 },
+  { id: 'lower_back', label: 'Lower back', x: 50, y: 48 },
+  { id: 'left_hip', label: 'L Hip', x: 38, y: 58 },
+  { id: 'right_hip', label: 'R Hip', x: 62, y: 58 },
+  { id: 'left_knee', label: 'L Knee', x: 38, y: 74 },
+  { id: 'right_knee', label: 'R Knee', x: 62, y: 74 },
+  { id: 'left_ankle', label: 'L Ankle', x: 38, y: 90 },
+  { id: 'right_ankle', label: 'R Ankle', x: 62, y: 90 },
+] as const
+
+export const SYMPTOM_FIELDS = [
+  { key: 'pain', label: 'Pain', min: 0, max: 10, tip: 'Overall joint pain' },
+  { key: 'fatigue', label: 'Fatigue', min: 0, max: 10, tip: 'Energy drain' },
+  { key: 'stiffness', label: 'Stiffness', min: 0, max: 10, tip: 'Morning / movement' },
+  { key: 'swelling', label: 'Swelling', min: 0, max: 10, tip: 'Visible inflammation' },
+  { key: 'skinFlare', label: 'Skin flare', min: 0, max: 10, tip: 'Psoriasis activity' },
+  { key: 'mood', label: 'Mood', min: 0, max: 10, tip: 'Higher is better' },
+  { key: 'sleep', label: 'Sleep quality', min: 0, max: 10, tip: 'Higher is better' },
+  { key: 'stress', label: 'Stress', min: 0, max: 10, tip: 'Mental load today' },
+  { key: 'water', label: 'Water (cups)', min: 0, max: 12, tip: 'Hydration' },
+] as const

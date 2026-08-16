@@ -1,0 +1,68 @@
+import type { ExerciseItem } from '../types'
+
+/** Trusted public education / PT channels — links are examples for MVP embedding. */
+export const EXERCISES: ExerciseItem[] = [
+  {
+    id: 'stretch-am',
+    title: 'Gentle morning stretch',
+    category: 'Stretching',
+    duration: '8 min',
+    level: 'gentle',
+    youtubeUrl: 'https://www.youtube.com/watch?v=2e8WCWJ7vh4',
+    source: 'Arthritis Foundation–style gentle mobility',
+  },
+  {
+    id: 'chair-flow',
+    title: 'Chair exercise flow',
+    category: 'Chair',
+    duration: '10 min',
+    level: 'gentle',
+    youtubeUrl: 'https://www.youtube.com/watch?v=iqexzZc2v6E',
+    source: 'Seated PT-friendly routine',
+  },
+  {
+    id: 'yoga-ease',
+    title: 'Restorative yoga for joints',
+    category: 'Yoga',
+    duration: '15 min',
+    level: 'gentle',
+    youtubeUrl: 'https://www.youtube.com/watch?v=4pLUleLdwY4',
+    source: 'Gentle yoga for arthritis',
+  },
+  {
+    id: 'walk-pace',
+    title: 'Easy paced walk cues',
+    category: 'Walking',
+    duration: '20 min',
+    level: 'moderate',
+    youtubeUrl: 'https://www.youtube.com/watch?v=njeZ29umqVE',
+    source: 'Low-impact walking guidance',
+  },
+  {
+    id: 'band-upper',
+    title: 'Resistance band upper body',
+    category: 'Resistance bands',
+    duration: '12 min',
+    level: 'moderate',
+    youtubeUrl: 'https://www.youtube.com/watch?v=vTh_RxLTZ4Y',
+    source: 'Band work for strength without impact',
+  },
+  {
+    id: 'water-moves',
+    title: 'Pool / water exercise ideas',
+    category: 'Water',
+    duration: '15 min',
+    level: 'gentle',
+    youtubeUrl: 'https://www.youtube.com/watch?v=KQ8jZ0ZQZqE',
+    source: 'Aquatic arthritis movement ideas',
+  },
+  {
+    id: 'hand-mob',
+    title: 'Hand & finger mobility',
+    category: 'Hand mobility',
+    duration: '6 min',
+    level: 'gentle',
+    youtubeUrl: 'https://www.youtube.com/watch?v=gMZ6y2QwYpE',
+    source: 'Hand OT / PT mobility drills',
+  },
+]
