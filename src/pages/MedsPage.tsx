@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
+import { hapticSuccess } from '../native/shell'
 import type { MedType } from '../types'
 
 export function MedsPage() {
@@ -12,7 +13,7 @@ export function MedsPage() {
   const [dose, setDose] = useState('')
   const [schedule, setSchedule] = useState('')
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !schedule.trim()) return
     addMedication({
@@ -22,6 +23,7 @@ export function MedsPage() {
       schedule: schedule.trim(),
       active: true,
     })
+    await hapticSuccess()
     setName('')
     setDose('')
     setSchedule('')
@@ -32,8 +34,8 @@ export function MedsPage() {
       <header className="page-intro">
         <h1>Medications</h1>
         <p>
-          Track tablets, injections, and refill timing. Browser notifications
-          can be added when you connect Firebase later.
+          Track tablets, injections, and refill timing. Native reminder
+          notifications can be added when you connect Firebase later.
         </p>
       </header>
 

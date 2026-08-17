@@ -3,10 +3,17 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  envPrefix: 'VITE_',
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(
+      process.env.npm_package_version ?? '0.1.0',
+    ),
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Articara — PsA Companion',

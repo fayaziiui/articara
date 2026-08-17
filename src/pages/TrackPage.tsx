@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BodyMap } from '../components/BodyMap'
 import { SYMPTOM_FIELDS } from '../data/joints'
+import { hapticSuccess } from '../native/shell'
 import { useAppStore, today } from '../store/useAppStore'
 import type { DailyLog } from '../types'
 
@@ -52,9 +53,10 @@ export function TrackPage() {
   const setNum = (key: keyof typeof form, value: number) =>
     setForm((f) => ({ ...f, [key]: value }))
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     saveDailyLog(form)
+    await hapticSuccess()
     setSaved(true)
     setTimeout(() => navigate('/'), 700)
   }

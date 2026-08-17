@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore, today } from '../store/useAppStore'
+import { hapticSuccess } from '../native/shell'
 
 export function FlarePage() {
   const addFlare = useAppStore((s) => s.addFlare)
@@ -15,7 +16,7 @@ export function FlarePage() {
   const [medications, setMedications] = useState('')
   const [notes, setNotes] = useState('')
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     addFlare({
       date: today(),
@@ -28,6 +29,7 @@ export function FlarePage() {
       medications,
       notes,
     })
+    await hapticSuccess()
     navigate('/')
   }
 

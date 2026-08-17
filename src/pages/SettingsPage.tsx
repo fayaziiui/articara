@@ -1,9 +1,20 @@
+import { useEffect, useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
+import { getNativeAppInfo, isNative } from '../native/shell'
 
 export function SettingsPage() {
   const profile = useAppStore((s) => s.profile)
   const setProfile = useAppStore((s) => s.setProfile)
   const seedDemo = useAppStore((s) => s.seedDemo)
+  const [appInfo, setAppInfo] = useState({
+    platform: isNative() ? 'Native app' : 'Web PWA',
+    version: import.meta.env.VITE_APP_VERSION || '0.1.0',
+    build: 'web',
+  })
+
+  useEffect(() => {
+    void getNativeAppInfo().then(setAppInfo)
+  }, [])
 
   return (
     <div className="stack">
@@ -11,6 +22,20 @@ export function SettingsPage() {
         <h1>Settings & pricing</h1>
         <p>Manage your profile and Articara plan.</p>
       </header>
+
+      <section className="panel">
+        <h2>This device</h2>
+        <p className="badge">{appInfo.platform}</p>
+        <p className="muted small">
+          Version {appInfo.version}
+          {appInfo.build !== 'web' ? ` · build ${appInfo.build}` : ''}
+        </p>
+        <p className="muted small">
+          {isNative()
+            ? 'You are using the native iOS or Android shell. Data stays on this device until cloud sync is added.'
+            : 'You are using the web app. Install Articara from the App Store, Google Play, or “Add to Home Screen”.'}
+        </p>
+      </section>
 
       <section className="panel">
         <h2>Profile</h2>

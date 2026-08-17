@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, FileDown, Flame } from 'lucide-react'
 import { DisclaimerBanner } from '../components/Disclaimer'
+import { hapticLight, hapticSuccess } from '../native/shell'
 import { defaultWellness, useAppStore, today } from '../store/useAppStore'
 import { buildInsights } from '../utils/insights'
 import { exportDoctorReport } from '../utils/pdfReport'
@@ -21,6 +22,7 @@ export function HomePage() {
   const medications = useAppStore((s) => s.medications)
   const toggleWellness = useAppStore((s) => s.toggleWellness)
   const wellnessEntries = useAppStore((s) => s.wellness)
+  const [exporting, setExporting] = useState(false)
   const wellness = useMemo(() => {
     const date = today()
     return wellnessEntries.find((w) => w.date === date) ?? defaultWellness(date)
@@ -79,7 +81,10 @@ export function HomePage() {
               <button
                 type="button"
                 className={wellness[c.key] ? 'check on' : 'check'}
-                onClick={() => toggleWellness(c.key)}
+                onClick={() => {
+                  void hapticLight()
+                  toggleWellness(c.key)
+                }}
               >
                 <span className="check-icon">
                   {wellness[c.key] ? <Check size={14} /> : null}
@@ -102,11 +107,27 @@ export function HomePage() {
         <button
           type="button"
           className="btn secondary"
-          onClick={() =>
-            exportDoctorReport({ profile, logs: dailyLogs, flares, medications })
-          }
+          disabled={exporting}
+          onClick={() => {
+            void (async () => {
+              setExporting(true)
+              try {
+                await exportDoctorReport({
+                  profile,
+                  logs: dailyLogs,
+                  flares,
+                  medications,
+                })
+                await hapticSuccess()
+              } catch {
+                // User cancelled the native share sheet.
+              } finally {
+                setExporting(false)
+              }
+            })()
+          }}
         >
-          <FileDown size={16} /> Download PDF
+          <FileDown size={16} /> {exporting ? 'Preparing PDF…' : 'Download PDF'}
         </button>
       </section>
 
