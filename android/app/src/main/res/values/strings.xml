@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Articara</string>
+    <string name="title_activity_main">Articara</string>
+    <string name="package_name">app.articara.companion</string>
+    <string name="custom_url_scheme">app.articara.companion</string>
+</resources>

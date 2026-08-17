@@ -39,20 +39,21 @@ Competitive set sits ~$3.99–$5/mo. Lifetime later optional ($79–$99) after r
 Payments not wired yet — Settings uses a demo plan toggle.
 
 ## MVP scope (built)
-Mobile-first **PWA** (installable on phone). Flutter was specified but not installed on this machine; PWA ships faster and can be wrapped with Capacitor for App Store / Play later.
+Mobile-first **PWA** plus **Capacitor native shells** for iOS and Android (same React UI). Flutter was specified originally; Capacitor ships from this codebase without a rewrite.
 
 - Onboarding + meal preference
 - Daily symptom tracker + joint body map
 - Flare tracker with trigger context
 - Medication list/reminders (local)
 - Progress charts (Recharts)
-- Doctor PDF export (jsPDF)
+- Doctor PDF export (jsPDF) with native share sheet on iOS/Android
 - Meal plans (5 styles including Desi)
 - Exercise library with YouTube links
 - Wellness checklist
 - Rule-based “AI” daily insights (OpenAI-ready hook later)
 - Education + medical disclaimer
 - Local persistence (Zustand + localStorage); Firebase-ready next
+- Native status bar, splash, safe areas, Android back button, haptics
 
 ## Website
 Deferred per brief. Use getarticara.com later for waitlist / App Store links.
@@ -61,5 +62,6 @@ Deferred per brief. Use getarticara.com later for waitlist / App Store links.
 1. Purchase **articara.app** + **getarticara.com**
 2. Create Firebase project (Auth, Firestore, FCM reminders)
 3. Optional OpenAI key for richer personalized copy
-4. Capacitor wrap → TestFlight / Play internal testing
+4. Open `ios/` in Xcode and `android/` in Android Studio → TestFlight / Play internal testing
 5. Privacy policy + HIPAA-aware posture (health data; start with strong privacy + encryption at rest)
+6. Generate store icons/screenshots (`npm run assets:generate` then Capacitor assets)

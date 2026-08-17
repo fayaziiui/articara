@@ -1,9 +1,12 @@
 import { jsPDF } from 'jspdf'
 import { format, parseISO } from 'date-fns'
+import { Capacitor } from '@capacitor/core'
+import { Directory, Filesystem } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 import type { DailyLog, FlareLog, Medication, UserProfile } from '../types'
 import { JOINTS } from '../data/joints'
 
-export function exportDoctorReport(opts: {
+export async function exportDoctorReport(opts: {
   profile: UserProfile
   logs: DailyLog[]
   flares: FlareLog[]
@@ -96,5 +99,23 @@ export function exportDoctorReport(opts: {
     })
   }
 
-  doc.save(`Articara-Report-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+  const filename = `Articara-Report-${format(new Date(), 'yyyy-MM-dd')}.pdf`
+
+  if (Capacitor.isNativePlatform()) {
+    const data = doc.output('datauristring').split(',')[1] ?? ''
+    const saved = await Filesystem.writeFile({
+      path: filename,
+      data,
+      directory: Directory.Cache,
+    })
+    await Share.share({
+      title: 'Articara doctor report',
+      text: 'PsA visit summary from Articara',
+      url: saved.uri,
+      dialogTitle: 'Share doctor report',
+    })
+    return
+  }
+
+  doc.save(filename)
 }
